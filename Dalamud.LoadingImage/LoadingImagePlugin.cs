@@ -35,9 +35,9 @@ namespace Dalamud.LoadingImage
 
         private int height = 1080;
         private int width = 1920;
-        private float scaleX = 0.620f;
-        private float scaleY = 0.620f;
-        private float X = -110f;
+        private float scaleX = 0.595f;
+        private float scaleY = 0.595f;
+        private float X = -60f;
         private float Y = -220f;
 
         public void Initialize(DalamudPluginInterface pluginInterface)
@@ -153,6 +153,12 @@ namespace Dalamud.LoadingImage
 
                     if (terriZone == null)
                         return r;
+
+                    if (terriZone.PlaceNameRegionIcon != terriRegion.PlaceNameRegionIcon)
+                    {
+                        PluginLog.Information($"Mismatch: {terriZone.RowId} {terriRegion.RowId}");
+                        return r;
+                    }
 
                     var loading = this.loadings.FirstOrDefault(x => x.RowId == terriZone.LoadingImage);
 
