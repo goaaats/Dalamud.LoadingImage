@@ -1,9 +1,9 @@
 {
   "Author": "goat",
-  "Name": "Character Data Sync",
-  "Description": "This plugin allows you to use your character data from your main character on all others.",
-  "InternalName": "Dalamud.CharacterSync",
-  "AssemblyVersion": "1.7.0.0",
+  "Name": "Fancy Loading Screens",
+  "Description": "This plugin shows the destination zone's concept art while loading.",
+  "InternalName": "Dalamud.LoadingImage",
+  "AssemblyVersion": "1.0.0.0",
   "ApplicableVersion": "any",
   "DalamudApiLevel": 3
 }
