@@ -9,7 +9,7 @@ using Lumina.Excel;
 using Lumina.Excel.GeneratedSheets;
 using Lumina.Text;
 
-namespace Dalamud.CharacterSync
+namespace Dalamud.LoadingImage
 {
    [Sheet( "LoadingImage" )]
     public class LoadingImage : ExcelRow

@@ -9,14 +9,11 @@ using Dalamud.Game.Command;
 using Dalamud.Game.Internal;
 using Dalamud.Hooking;
 using Dalamud.Plugin;
-using Dalamud.RichPresence.Config;
-using EasyHook;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using ImGuiNET;
-using ImGuiScene;
 using Lumina.Excel.GeneratedSheets;
 
-namespace Dalamud.CharacterSync
+namespace Dalamud.LoadingImage
 {
     // ReSharper disable once UnusedType.Global
     public unsafe class LoadingImagePlugin : IDalamudPlugin
