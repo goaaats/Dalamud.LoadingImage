@@ -7,8 +7,8 @@
     <ProjectGuid>{42AAB406-846E-49A2-B2E4-D1428DACB8B1}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>Dalamud.CharacterSync</RootNamespace>
-    <AssemblyName>Dalamud.CharacterSync</AssemblyName>
+    <RootNamespace>Dalamud.LoadingImage</RootNamespace>
+    <AssemblyName>Dalamud.LoadingImage</AssemblyName>
     <TargetFrameworkVersion>v4.7.2</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <Deterministic>true</Deterministic>
