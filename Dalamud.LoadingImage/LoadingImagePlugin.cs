@@ -19,7 +19,7 @@ using Lumina.Excel.GeneratedSheets;
 namespace Dalamud.CharacterSync
 {
     // ReSharper disable once UnusedType.Global
-    public unsafe class CharacterSyncPlugin : IDalamudPlugin
+    public unsafe class LoadingImagePlugin : IDalamudPlugin
     {
         private DalamudPluginInterface _pi;
 
