@@ -135,7 +135,7 @@ namespace Dalamud.LoadingImage
             }
         }
 
-        public string Name => "Character Sync";
+        public string Name => "Fancy Loading Screens";
 
         private int toLoadingTerri = -1;
 
