@@ -24,12 +24,13 @@ namespace Dalamud.LoadingImage
 
         private Hook<PrintIconPathDelegate> printIconHook;
 
-        private delegate IntPtr SetPreloadTerritoryDelegate(IntPtr a1, IntPtr a2, IntPtr a3, IntPtr a4, int a5, int a6);
+        private delegate byte HandleTerriChangeDelegate(IntPtr a1, uint a2, byte a3, byte a4, IntPtr a5);
 
-        private Hook<SetPreloadTerritoryDelegate> preloadHook;
+        private Hook<HandleTerriChangeDelegate> handleTerriChangeHook;
 
         private TerritoryType[] terris;
         private LoadingImage[] loadings;
+        private ContentFinderCondition[] cfcs;
 
         private bool hasLoading = false;
 
@@ -46,19 +47,20 @@ namespace Dalamud.LoadingImage
 
             this.terris = pluginInterface.Data.GetExcelSheet<TerritoryType>().ToArray();
             this.loadings = pluginInterface.Data.GetExcelSheet<LoadingImage>().ToArray();
+            this.cfcs = pluginInterface.Data.GetExcelSheet<ContentFinderCondition>().ToArray();
 
             this.printIconHook = new Hook<PrintIconPathDelegate>(
                 pluginInterface.TargetModuleScanner.ScanText("40 53 48 83 EC 40 41 83 F8 01"),
                 new PrintIconPathDelegate(this.PrintIconPathDetour));
 
-            this.preloadHook = new Hook<SetPreloadTerritoryDelegate>(
-                pluginInterface.TargetModuleScanner.ScanText("E8 ?? ?? ?? ?? 41 80 7E ?? ?? 75 16"),
-                new SetPreloadTerritoryDelegate(this.SetPreloadTerritoryDetour));
+            this.handleTerriChangeHook = new Hook<HandleTerriChangeDelegate>(
+                pluginInterface.TargetModuleScanner.ScanText("40 53 55 56 41 56 48 81 EC ?? ?? ?? ?? 48 8B 05 ?? ?? ?? ?? 48 33 C4 48 89 84 24 ?? ?? ?? ?? 4C 8B F1 41 0F B6 F1"),
+                new HandleTerriChangeDelegate(this.HandleTerriChangeDetour));
 
-            this.preloadHook.Enable();
             this.printIconHook.Enable();
+            this.handleTerriChangeHook.Enable();
 
-            #if DEBUG
+#if DEBUG
             this._pi.UiBuilder.OnBuildUi += UiBuilderOnOnBuildUi;
             #endif
 
@@ -75,15 +77,10 @@ namespace Dalamud.LoadingImage
                 ImGui.InputFloat("SY", ref this.scaleY);
                 ImGui.InputFloat("X", ref this.X);
                 ImGui.InputFloat("Y", ref this.Y);
+                ImGui.Checkbox("hasLoading", ref this.hasLoading);
 
                 ImGui.End();
             }
-        }
-
-        private IntPtr SetPreloadTerritoryDetour(IntPtr a1, IntPtr a2, IntPtr a3, IntPtr a4, int a5, int a6)
-        {
-            this.toLoadingTerri = a6;
-            return this.preloadHook.Original(a1, a2, a3, a4, a5, a6);
         }
 
         private void FrameworkOnOnUpdateEvent(Framework framework)
@@ -105,7 +102,16 @@ namespace Dalamud.LoadingImage
 
                 if (loadingImage->Type == NodeType.Image && imgNode != null && asset != null)
                 {
-                    var texName = Marshal.PtrToStringAnsi(new IntPtr(asset->AtkTexture.Resource->TexFileResourceHandle->ResourceHandle.FileName));
+                    var resource = asset->AtkTexture.Resource;
+                    if (resource == null)
+                        return;
+
+                    var name = resource->TexFileResourceHandle->ResourceHandle.FileName;
+
+                    if (name == null)
+                        return;
+
+                    var texName = Marshal.PtrToStringAnsi(new IntPtr(name));
 
                     if (!texName.Contains("loadingimage"))
                     {
@@ -147,23 +153,48 @@ namespace Dalamud.LoadingImage
 
             if (terriRegion != null)
             {
+                PluginLog.Information($"LoadIcon: {iconId} detected for r:{terriRegion.RowId} with toLoadingTerri:{this.toLoadingTerri}");
+
                 try
                 {
+                    if (this.toLoadingTerri == -1)
+                    {
+                        PluginLog.Information($"toLoadingImage not set!");
+                        this.hasLoading = false;
+                        return r;
+                    }
+
+                    if (this.cfcs.Any(x => x.ContentLinkType == 1 && x.TerritoryType.Row == this.toLoadingTerri))
+                    {
+                        PluginLog.Information("Is InstanceContent zone!");
+                        this.hasLoading = false;
+                        return r;
+                    }
+
                     var terriZone = this.terris.FirstOrDefault(x => x.RowId == this.toLoadingTerri);
 
                     if (terriZone == null)
+                    {
+                        PluginLog.Information($"terriZone null!");
+                        this.hasLoading = false;
                         return r;
+                    }
 
                     if (terriZone.PlaceNameRegionIcon != terriRegion.PlaceNameRegionIcon)
                     {
                         PluginLog.Information($"Mismatch: {terriZone.RowId} {terriRegion.RowId}");
+                        this.hasLoading = false;
                         return r;
                     }
 
                     var loading = this.loadings.FirstOrDefault(x => x.RowId == terriZone.LoadingImage);
 
                     if (loading == null)
+                    {
+                        PluginLog.Information($"LoadingImage null!");
+                        this.hasLoading = false;
                         return r;
+                    }
 
                     SafeMemory.WriteString(pathPtr, $"ui/loadingimage/{loading.Name}_hr1.tex");
                     PluginLog.Information($"Replacing icon for territory {terriRegion.RowId}");
@@ -179,10 +210,17 @@ namespace Dalamud.LoadingImage
             return r;
         }
 
+        private byte HandleTerriChangeDetour(IntPtr a1, uint a2, byte a3, byte a4, IntPtr a5)
+        {
+            this.toLoadingTerri = (int) a2;
+            PluginLog.Information($"toLoadingTerri: {this.toLoadingTerri}");
+            return this.handleTerriChangeHook.Original(a1, a2, a3, a4, a5);
+        }
+
         public void Dispose()
         {
-            printIconHook.Dispose();
-            this.preloadHook.Dispose();
+            this.printIconHook.Dispose();
+            this.handleTerriChangeHook.Dispose();
             this._pi.Framework.OnUpdateEvent -= FrameworkOnOnUpdateEvent;
 
             #if DEBUG
