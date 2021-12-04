@@ -1,13 +1,12 @@
 ﻿using System;
-using System.IO;
 using System.Linq;
-using System.Numerics;
-using System.Reflection;
 using System.Runtime.InteropServices;
-using System.Text.RegularExpressions;
-using Dalamud.Game.Command;
-using Dalamud.Game.Internal;
+using Dalamud.Data;
+using Dalamud.Game;
+using Dalamud.Game.Gui;
 using Dalamud.Hooking;
+using Dalamud.IoC;
+using Dalamud.Logging;
 using Dalamud.Plugin;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using ImGuiNET;
@@ -19,6 +18,8 @@ namespace Dalamud.LoadingImage
     public unsafe class LoadingImagePlugin : IDalamudPlugin
     {
         private DalamudPluginInterface _pi;
+        private Framework _framework;
+        private GameGui _gameGui;
 
         private delegate int PrintIconPathDelegate(IntPtr pathPtr, int iconId, int hq, int lang);
 
@@ -41,30 +42,39 @@ namespace Dalamud.LoadingImage
         private float X = -60f;
         private float Y = -220f;
 
-        public void Initialize(DalamudPluginInterface pluginInterface)
+        public LoadingImagePlugin(
+            [RequiredVersion("1.0")] DalamudPluginInterface pluginInterface,
+            [RequiredVersion("1.0")] DataManager dataManager,
+            [RequiredVersion("1.0")] GameGui gameGui,
+            [RequiredVersion("1.0")] SigScanner sigScanner,
+            [RequiredVersion("1.0")] Framework framework
+            
+        )
         {
             _pi = pluginInterface;
+            _gameGui = gameGui;
+            _framework = framework;
 
-            this.terris = pluginInterface.Data.GetExcelSheet<TerritoryType>().ToArray();
-            this.loadings = pluginInterface.Data.GetExcelSheet<LoadingImage>().ToArray();
-            this.cfcs = pluginInterface.Data.GetExcelSheet<ContentFinderCondition>().ToArray();
+            this.terris = dataManager.GetExcelSheet<TerritoryType>().ToArray();
+            this.loadings = dataManager.GetExcelSheet<LoadingImage>().ToArray();
+            this.cfcs = dataManager.GetExcelSheet<ContentFinderCondition>().ToArray();
 
             this.printIconHook = new Hook<PrintIconPathDelegate>(
-                pluginInterface.TargetModuleScanner.ScanText("40 53 48 83 EC 40 41 83 F8 01"),
-                new PrintIconPathDelegate(this.PrintIconPathDetour));
+                sigScanner.ScanText("40 53 48 83 EC 40 41 83 F8 01"),
+                this.PrintIconPathDetour);
 
             this.handleTerriChangeHook = new Hook<HandleTerriChangeDelegate>(
-                pluginInterface.TargetModuleScanner.ScanText("40 53 55 56 41 56 48 81 EC ?? ?? ?? ?? 48 8B 05 ?? ?? ?? ?? 48 33 C4 48 89 84 24 ?? ?? ?? ?? 4C 8B F1 41 0F B6 F1"),
-                new HandleTerriChangeDelegate(this.HandleTerriChangeDetour));
+                sigScanner.ScanText("40 53 55 56 41 56 48 81 EC ?? ?? ?? ?? 48 8B 05 ?? ?? ?? ?? 48 33 C4 48 89 84 24 ?? ?? ?? ?? 4C 8B F1 41 0F B6 F1"),
+                this.HandleTerriChangeDetour);
 
             this.printIconHook.Enable();
             this.handleTerriChangeHook.Enable();
 
-#if DEBUG
-            this._pi.UiBuilder.OnBuildUi += UiBuilderOnOnBuildUi;
+            #if DEBUG
+            this._pi.UiBuilder.Draw += UiBuilderOnOnBuildUi;
             #endif
 
-            this._pi.Framework.OnUpdateEvent += FrameworkOnOnUpdateEvent;
+            framework.Update += FrameworkOnOnUpdateEvent;
         }
 
         private void UiBuilderOnOnBuildUi()
@@ -88,9 +98,13 @@ namespace Dalamud.LoadingImage
             if (this.hasLoading != true)
                 return;
 
-            var unitBase = (AtkUnitBase*) this._pi.Framework.Gui.GetUiObjectByName("_LocationTitle", 1);
+            var unitBase = (AtkUnitBase*) _gameGui.GetAddonByName("_LocationTitle", 1);
+            var unitBaseShort = (AtkUnitBase*) _gameGui.GetAddonByName("_LocationTitleShort", 1);
+            
+            PluginLog.Log($"unitbase: {(long)unitBase:X} visible: {unitBase->IsVisible}");
+            PluginLog.Log($"unishort: {(long)unitBaseShort:X} visible: {unitBaseShort->IsVisible}");
 
-            if (unitBase != null)
+            if (unitBase != null && unitBaseShort != null)
             {
                 var loadingImage = unitBase->UldManager.NodeList[4];
                 var imgNode = (AtkImageNode*) loadingImage;
@@ -108,10 +122,10 @@ namespace Dalamud.LoadingImage
 
                     var name = resource->TexFileResourceHandle->ResourceHandle.FileName;
 
-                    if (name == null)
+                    if (name.BufferPtr == null)
                         return;
 
-                    var texName = Marshal.PtrToStringAnsi(new IntPtr(name));
+                    var texName = name.ToString();
 
                     if (!texName.Contains("loadingimage"))
                     {
@@ -196,6 +210,13 @@ namespace Dalamud.LoadingImage
                         return r;
                     }
 
+                    if (!ShouldProcess())
+                    {
+                        PluginLog.Log("Process check failed!");
+                        this.hasLoading = false;
+                        return r;
+                    }
+
                     SafeMemory.WriteString(pathPtr, $"ui/loadingimage/{loading.Name}_hr1.tex");
                     PluginLog.Information($"Replacing icon for territory {terriRegion.RowId}");
 
@@ -217,14 +238,31 @@ namespace Dalamud.LoadingImage
             return this.handleTerriChangeHook.Original(a1, a2, a3, a4, a5);
         }
 
+        private bool ShouldProcess()
+        {
+            var t = (AtkUnitBase*) _gameGui.GetAddonByName("_LocationTitle", 1);
+            var ts = (AtkUnitBase*) _gameGui.GetAddonByName("_LocationTitleShort", 1);
+            
+            #if DEBUG
+            PluginLog.Log($"unitbase: {(long)t:X} visible: {t->IsVisible}");
+            PluginLog.Log($"unishort: {(long)ts:X} visible: {ts->IsVisible}");
+            PluginLog.Log($"t != null: {t != null}");
+            PluginLog.Log($"ts != null: {ts != null}");
+            PluginLog.Log($"t->IsVisible: {t->IsVisible}");
+            PluginLog.Log($"!ts->IsVisible: {!ts->IsVisible}");
+            #endif
+
+            return t != null && ts != null && t->IsVisible && !ts->IsVisible;
+        }
+
         public void Dispose()
         {
             this.printIconHook.Dispose();
             this.handleTerriChangeHook.Dispose();
-            this._pi.Framework.OnUpdateEvent -= FrameworkOnOnUpdateEvent;
+            _framework.Update -= FrameworkOnOnUpdateEvent;
 
             #if DEBUG
-            this._pi.UiBuilder.OnBuildUi -= UiBuilderOnOnBuildUi;
+            this._pi.UiBuilder.Draw -= UiBuilderOnOnBuildUi;
             #endif
 
             _pi.Dispose();
