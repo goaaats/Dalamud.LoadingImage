@@ -6,9 +6,9 @@
     <AssemblyTitle>Dalamud.LoadingImage</AssemblyTitle>
     <Product>Dalamud.LoadingImage</Product>
     <OutputPath>bin\$(Configuration)\</OutputPath>
-    <AssemblyFileVersion>1.0.0.5</AssemblyFileVersion>
-    <Version>1.0.0.5</Version>
-    <FileVersion>1.0.0.5</FileVersion>
+    <AssemblyFileVersion>1.0.0.6</AssemblyFileVersion>
+    <Version>1.0.0.6</Version>
+    <FileVersion>1.0.0.6</FileVersion>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <LangVersion>latest</LangVersion>
