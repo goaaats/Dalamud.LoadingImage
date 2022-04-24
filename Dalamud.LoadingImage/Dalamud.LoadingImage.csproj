@@ -1,59 +1,51 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup>
+  <PropertyGroup Label="Target">
     <TargetFramework>net5.0-windows</TargetFramework>
-    <Platforms>x64</Platforms>
-    <Company>goatsoft</Company>
-    <AssemblyTitle>Dalamud.LoadingImage</AssemblyTitle>
-    <Product>Dalamud.LoadingImage</Product>
-    <OutputPath>bin\$(Configuration)\</OutputPath>
-    <AssemblyFileVersion>1.0.0.6</AssemblyFileVersion>
-    <Version>1.0.0.6</Version>
-    <FileVersion>1.0.0.6</FileVersion>
+    <PlatformTarget>x64</PlatformTarget>
+    <LangVersion>9.0</LangVersion>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <AssemblyVersion>1.0.0.8</AssemblyVersion>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
-    <LangVersion>latest</LangVersion>
+    <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
     <ProduceReferenceAssembly>false</ProduceReferenceAssembly>
+    <OutputPath>bin\$(Configuration)\</OutputPath>
   </PropertyGroup>
 
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x64' ">
-    <DebugType>full</DebugType>
-    <DefineConstants>DEBUG;TRACE</DefineConstants>
-  </PropertyGroup>
-
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|x64' ">
-    <DebugType>pdbonly</DebugType>
+  <PropertyGroup Label="Documentation">
+    <DocumentationFile></DocumentationFile>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
 
   <ItemGroup>
-    <Reference Include="Dalamud">
-      <HintPath>$(AppData)\XIVLauncher\addon\Hooks\dev\Dalamud.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="ImGui.NET">
-      <HintPath>$(AppData)\XIVLauncher\addon\Hooks\dev\ImGui.NET.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="ImGuiScene">
-      <HintPath>$(AppData)\XIVLauncher\addon\Hooks\dev\ImGuiScene.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="Lumina">
-      <HintPath>$(AppData)\XIVLauncher\addon\Hooks\dev\Lumina.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="Lumina.Excel">
-      <HintPath>$(AppData)\XIVLauncher\addon\Hooks\dev\Lumina.Excel.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="FFXIVClientStructs">
-      <HintPath>$(AppData)\XIVLauncher\addon\Hooks\dev\FFXIVClientStructs.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Dalamud.LoadingImage.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
+    <PackageReference Include="StyleCop.Analyzers" Version="1.2.0-beta.333">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
   </ItemGroup>
 
+  <PropertyGroup>
+    <DalamudLibPath>$(appdata)\XIVLauncher\addon\Hooks\dev\</DalamudLibPath>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <AssemblySearchPaths>
+      $(AssemblySearchPaths);
+      $(DalamudLibPath);
+    </AssemblySearchPaths>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="DalamudPackager" Version="2.1.7" />
+    <Reference Include="Dalamud" Private="False" />
+    <Reference Include="ImGui.NET" Private="False" />
+    <Reference Include="ImGuiScene" Private="False" />
+    <Reference Include="Lumina" Private="False" />
+    <Reference Include="Lumina.Excel" Private="False" />
+    <Reference Include="Newtonsoft.Json" Private="False" />
+    <Reference Include="FFXIVClientStructs" Private="False" />
+  </ItemGroup>
 </Project>

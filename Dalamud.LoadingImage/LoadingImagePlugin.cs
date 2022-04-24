@@ -264,8 +264,6 @@ namespace Dalamud.LoadingImage
             #if DEBUG
             this._pi.UiBuilder.Draw -= UiBuilderOnOnBuildUi;
             #endif
-
-            _pi.Dispose();
         }
     }
 }
