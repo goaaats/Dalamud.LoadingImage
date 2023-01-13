@@ -59,11 +59,11 @@ namespace Dalamud.LoadingImage
             this.loadings = dataManager.GetExcelSheet<LoadingImage>().ToArray();
             this.cfcs = dataManager.GetExcelSheet<ContentFinderCondition>().ToArray();
 
-            this.printIconHook = new Hook<PrintIconPathDelegate>(
+            this.printIconHook = Hook<PrintIconPathDelegate>.FromAddress(
                 sigScanner.ScanText("40 53 48 83 EC 40 41 83 F8 01"),
                 this.PrintIconPathDetour);
 
-            this.handleTerriChangeHook = new Hook<HandleTerriChangeDelegate>(
+            this.handleTerriChangeHook = Hook<HandleTerriChangeDelegate>.FromAddress(
                 sigScanner.ScanText("40 53 55 56 41 56 48 81 EC ?? ?? ?? ?? 48 8B 05 ?? ?? ?? ?? 48 33 C4 48 89 84 24 ?? ?? ?? ?? 4C 8B F1 41 0F B6 F1"),
                 this.HandleTerriChangeDetour);
 
