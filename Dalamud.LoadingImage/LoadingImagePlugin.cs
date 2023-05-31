@@ -64,7 +64,7 @@ namespace Dalamud.LoadingImage
                 this.PrintIconPathDetour);
 
             this.handleTerriChangeHook = Hook<HandleTerriChangeDelegate>.FromAddress(
-                sigScanner.ScanText("40 53 55 56 41 56 48 81 EC ?? ?? ?? ?? 48 8B 05 ?? ?? ?? ?? 48 33 C4 48 89 84 24 ?? ?? ?? ?? 4C 8B F1 41 0F B6 F1"),
+                sigScanner.ScanText("40 53 55 57 41 56 48 81 EC ?? ?? ?? ?? 48 8B 05 ?? ?? ?? ?? 48 33 C4 48 89 84 24 ?? ?? ?? ?? 4C 8B F1 41 0F B6 F9"),
                 this.HandleTerriChangeDetour);
 
             this.printIconHook.Enable();
