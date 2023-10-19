@@ -8,6 +8,7 @@ using Dalamud.Hooking;
 using Dalamud.IoC;
 using Dalamud.Logging;
 using Dalamud.Plugin;
+using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using ImGuiNET;
 using Lumina.Excel.GeneratedSheets;
@@ -18,8 +19,9 @@ namespace Dalamud.LoadingImage
     public unsafe class LoadingImagePlugin : IDalamudPlugin
     {
         private DalamudPluginInterface _pi;
-        private Framework _framework;
-        private GameGui _gameGui;
+        private IFramework _framework;
+        private IGameGui _gameGui;
+        private IPluginLog _pluginLog;
 
         private delegate int PrintIconPathDelegate(IntPtr pathPtr, int iconId, int hq, int lang);
 
@@ -44,26 +46,27 @@ namespace Dalamud.LoadingImage
 
         public LoadingImagePlugin(
             [RequiredVersion("1.0")] DalamudPluginInterface pluginInterface,
-            [RequiredVersion("1.0")] DataManager dataManager,
-            [RequiredVersion("1.0")] GameGui gameGui,
-            [RequiredVersion("1.0")] SigScanner sigScanner,
-            [RequiredVersion("1.0")] Framework framework
-            
-        )
+            [RequiredVersion("1.0")] IDataManager dataManager,
+            [RequiredVersion("1.0")] IGameGui gameGui,
+            [RequiredVersion("1.0")] ISigScanner sigScanner,
+            [RequiredVersion("1.0")] IFramework framework,
+            [RequiredVersion("1.0")] IGameInteropProvider gameInteropProvider,
+            [RequiredVersion("1.0")] IPluginLog pluginLog)
         {
             _pi = pluginInterface;
             _gameGui = gameGui;
             _framework = framework;
+            _pluginLog = pluginLog;
 
             this.terris = dataManager.GetExcelSheet<TerritoryType>().ToArray();
             this.loadings = dataManager.GetExcelSheet<LoadingImage>().ToArray();
             this.cfcs = dataManager.GetExcelSheet<ContentFinderCondition>().ToArray();
 
-            this.printIconHook = Hook<PrintIconPathDelegate>.FromAddress(
+            this.printIconHook = gameInteropProvider.HookFromAddress<PrintIconPathDelegate>(
                 sigScanner.ScanText("40 53 48 83 EC 40 41 83 F8 01"),
                 this.PrintIconPathDetour);
 
-            this.handleTerriChangeHook = Hook<HandleTerriChangeDelegate>.FromAddress(
+            this.handleTerriChangeHook = gameInteropProvider.HookFromAddress<HandleTerriChangeDelegate>(
                 sigScanner.ScanText("40 53 55 57 41 56 48 81 EC ?? ?? ?? ?? 48 8B 05 ?? ?? ?? ?? 48 33 C4 48 89 84 24 ?? ?? ?? ?? 4C 8B F1 41 0F B6 F9"),
                 this.HandleTerriChangeDetour);
 
@@ -93,7 +96,7 @@ namespace Dalamud.LoadingImage
             }
         }
 
-        private void FrameworkOnOnUpdateEvent(Framework framework)
+        private void FrameworkOnOnUpdateEvent(IFramework framework)
         {
             if (this.hasLoading != true)
                 return;
@@ -101,8 +104,8 @@ namespace Dalamud.LoadingImage
             var unitBase = (AtkUnitBase*) _gameGui.GetAddonByName("_LocationTitle", 1);
             var unitBaseShort = (AtkUnitBase*) _gameGui.GetAddonByName("_LocationTitleShort", 1);
             
-            PluginLog.Log($"unitbase: {(long)unitBase:X} visible: {unitBase->IsVisible}");
-            PluginLog.Log($"unishort: {(long)unitBaseShort:X} visible: {unitBaseShort->IsVisible}");
+            this._pluginLog.Info($"unitbase: {(long)unitBase:X} visible: {unitBase->IsVisible}");
+            this._pluginLog.Info($"unishort: {(long)unitBaseShort:X} visible: {unitBaseShort->IsVisible}");
 
             if (unitBase != null && unitBaseShort != null)
             {
@@ -133,11 +136,11 @@ namespace Dalamud.LoadingImage
                         unitBase->UldManager.NodeList[4] = unitBase->UldManager.NodeList[5];
                         unitBase->UldManager.NodeList[5] = t;
 
-                        t->Flags_2 |= 0x1;
+                        t->DrawFlags |= 0x1;
 
                         loadingImage = unitBase->UldManager.NodeList[4];
 
-                        PluginLog.Information("Swapped!");
+                        this._pluginLog.Information("Swapped!");
                     }
                 }
 
@@ -149,7 +152,7 @@ namespace Dalamud.LoadingImage
                 loadingImage->Y = this.Y;
                 loadingImage->Priority = 0;
 
-                loadingImage->Flags_2 |= 0x1;
+                loadingImage->DrawFlags |= 0x1;
 
                 this.hasLoading = false;
             }
@@ -167,20 +170,20 @@ namespace Dalamud.LoadingImage
 
             if (terriRegion != null)
             {
-                PluginLog.Information($"LoadIcon: {iconId} detected for r:{terriRegion.RowId} with toLoadingTerri:{this.toLoadingTerri}");
+                this._pluginLog.Information($"LoadIcon: {iconId} detected for r:{terriRegion.RowId} with toLoadingTerri:{this.toLoadingTerri}");
 
                 try
                 {
                     if (this.toLoadingTerri == -1)
                     {
-                        PluginLog.Information($"toLoadingImage not set!");
+                        this._pluginLog.Information($"toLoadingImage not set!");
                         this.hasLoading = false;
                         return r;
                     }
 
                     if (this.cfcs.Any(x => x.ContentLinkType == 1 && x.TerritoryType.Row == this.toLoadingTerri))
                     {
-                        PluginLog.Information("Is InstanceContent zone!");
+                        this._pluginLog.Information("Is InstanceContent zone!");
                         this.hasLoading = false;
                         return r;
                     }
@@ -189,14 +192,14 @@ namespace Dalamud.LoadingImage
 
                     if (terriZone == null)
                     {
-                        PluginLog.Information($"terriZone null!");
+                        this._pluginLog.Information($"terriZone null!");
                         this.hasLoading = false;
                         return r;
                     }
 
                     if (terriZone.PlaceNameRegionIcon != terriRegion.PlaceNameRegionIcon)
                     {
-                        PluginLog.Information($"Mismatch: {terriZone.RowId} {terriRegion.RowId}");
+                        this._pluginLog.Information($"Mismatch: {terriZone.RowId} {terriRegion.RowId}");
                         this.hasLoading = false;
                         return r;
                     }
@@ -205,26 +208,26 @@ namespace Dalamud.LoadingImage
 
                     if (loading == null)
                     {
-                        PluginLog.Information($"LoadingImage null!");
+                        this._pluginLog.Information($"LoadingImage null!");
                         this.hasLoading = false;
                         return r;
                     }
 
                     if (!ShouldProcess())
                     {
-                        PluginLog.Log("Process check failed!");
+                        this._pluginLog.Information("Process check failed!");
                         this.hasLoading = false;
                         return r;
                     }
 
                     SafeMemory.WriteString(pathPtr, $"ui/loadingimage/{loading.Name}_hr1.tex");
-                    PluginLog.Information($"Replacing icon for territory {terriRegion.RowId}");
+                    this._pluginLog.Information($"Replacing icon for territory {terriRegion.RowId}");
 
                     this.hasLoading = true;
                 }
                 catch (Exception ex)
                 {
-                    PluginLog.Error(ex, "Could not replace loading image.");
+                    this._pluginLog.Error(ex, "Could not replace loading image.");
                 }
             }
 
@@ -234,7 +237,7 @@ namespace Dalamud.LoadingImage
         private byte HandleTerriChangeDetour(IntPtr a1, uint a2, byte a3, byte a4, IntPtr a5)
         {
             this.toLoadingTerri = (int) a2;
-            PluginLog.Information($"toLoadingTerri: {this.toLoadingTerri}");
+            this._pluginLog.Information($"toLoadingTerri: {this.toLoadingTerri}");
             return this.handleTerriChangeHook.Original(a1, a2, a3, a4, a5);
         }
 
@@ -244,12 +247,12 @@ namespace Dalamud.LoadingImage
             var ts = (AtkUnitBase*) _gameGui.GetAddonByName("_LocationTitleShort", 1);
             
             #if DEBUG
-            PluginLog.Log($"unitbase: {(long)t:X} visible: {t->IsVisible}");
-            PluginLog.Log($"unishort: {(long)ts:X} visible: {ts->IsVisible}");
-            PluginLog.Log($"t != null: {t != null}");
-            PluginLog.Log($"ts != null: {ts != null}");
-            PluginLog.Log($"t->IsVisible: {t->IsVisible}");
-            PluginLog.Log($"!ts->IsVisible: {!ts->IsVisible}");
+            this._pluginLog.Log($"unitbase: {(long)t:X} visible: {t->IsVisible}");
+            this._pluginLog.Log($"unishort: {(long)ts:X} visible: {ts->IsVisible}");
+            this._pluginLog.Log($"t != null: {t != null}");
+            this._pluginLog.Log($"ts != null: {ts != null}");
+            this._pluginLog.Log($"t->IsVisible: {t->IsVisible}");
+            this._pluginLog.Log($"!ts->IsVisible: {!ts->IsVisible}");
             #endif
 
             return t != null && ts != null && t->IsVisible && !ts->IsVisible;
